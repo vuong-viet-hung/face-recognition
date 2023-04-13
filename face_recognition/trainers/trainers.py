@@ -62,7 +62,7 @@ class ArcFaceTrainer:
         for input_batch, target_batch in progress_bar:
             self._train_one_step(input_batch, target_batch)
             progress_bar.set_description(
-                f"Train: loss = {self._loss.result()}, {self._format_metric_results()}"
+                f"Train: loss = {self._loss.result():.4f}, {self._format_metric_results()}"
             )
 
         self._notify_monitors("train")
