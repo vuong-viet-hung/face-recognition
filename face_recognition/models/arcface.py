@@ -19,7 +19,7 @@ class ArcFace(torch.nn.Module):
         )
         self._margin = margin
         self._scale_factor = scale_factor
-        self._softmax = torch.nn.Softmax(dim=0)
+        self._softmax = torch.nn.Softmax(dim=1)
 
     def forward(
         self,
