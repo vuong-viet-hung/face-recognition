@@ -80,14 +80,18 @@ class MacroAveragePrecision(Metric):
     def __init__(self) -> None:
         self.total_precision = 0.0
         self.sample_count = 0
+        self._n_current_valid_samples = 0
         super().__init__("average_precision")
 
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
         results_by_id = _group_results_by_id(output_batch, target_batch)
+        self._n_current_valid_samples = sum(
+            len(result_dict["predictions"]) for result_dict in results_by_id
+        )
 
-        if len(results_by_id) == 0:
+        if self._n_current_valid_samples == 0:
             return 0.0
 
         return torch.tensor(
@@ -101,10 +105,9 @@ class MacroAveragePrecision(Metric):
     def update(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> None:
-        batch_size, _ = output_batch.shape
         batch_aur = self(output_batch, target_batch)
-        self.total_precision += batch_aur * batch_size
-        self.sample_count += batch_size
+        self.total_precision += batch_aur * self._n_current_valid_samples
+        self.sample_count += self._n_current_valid_samples
 
     def result(self) -> float:
         return self.total_precision / self.sample_count
@@ -123,14 +126,18 @@ class MacroAUR(Metric):
     def __init__(self) -> None:
         self.total_aur = 0.0
         self.sample_count = 0
+        self._n_current_valid_samples = 0
         super().__init__("aur")
 
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
         results_by_id = _group_results_by_id(output_batch, target_batch)
+        self._n_current_valid_samples = sum(
+            len(result_dict["predictions"]) for result_dict in results_by_id
+        )
 
-        if len(results_by_id) == 0:
+        if self._n_current_valid_samples == 0:
             return 0.0
 
         return torch.tensor(
@@ -144,13 +151,12 @@ class MacroAUR(Metric):
     def update(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> None:
-        batch_size, _ = output_batch.shape
         batch_aur = self(output_batch, target_batch)
-        self.total_aur += batch_aur * batch_size
-        self.sample_count += batch_size
+        self.total_aur += batch_aur * self._n_current_valid_samples
+        self.sample_count += self._n_current_valid_samples
 
     def result(self) -> float:
-        return self.total_aur / self.sample_count
+        return self.total_aur / self.sample_count if self.sample_count != 0 else 0
 
     def reset(self) -> None:
         self.total_aur = 0.0
