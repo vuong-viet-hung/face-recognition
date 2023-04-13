@@ -203,4 +203,4 @@ def _group_results_by_id(
 def _cosine_similarity(
     key_embedding: torch.Tensor, query_embeddings: List[torch.Tensor]
 ) -> torch.Tensor:
-    return (key_embedding * torch.vstack(query_embeddings)).sum(axis=1)
+    return (key_embedding * torch.vstack(query_embeddings)).sum(axis=1).clamp(-1, 1)

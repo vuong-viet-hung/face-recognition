@@ -39,4 +39,4 @@ class ArcFace(torch.nn.Module):
 
 
 def _cosine_similarity(embedding_batch: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
-    return (embedding_batch[:, :, None, None] * w).sum(dim=1)
+    return (embedding_batch[:, :, None, None] * w).sum(dim=1).clamp(-1, 1)
