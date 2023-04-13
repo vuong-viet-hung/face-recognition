@@ -86,7 +86,7 @@ class MacroAveragePrecision(Metric):
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
-        results_by_id = _group_results_by_id(output_batch, target_batch)
+        results_by_id = group_results_by_id(output_batch, target_batch)
         self._n_current_valid_samples = sum(
             len(result_dict["predictions"]) for result_dict in results_by_id
         )
@@ -134,7 +134,7 @@ class MacroAUR(Metric):
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
-        results_by_id = _group_results_by_id(output_batch, target_batch)
+        results_by_id = group_results_by_id(output_batch, target_batch)
         self._n_current_valid_samples = sum(
             len(result_dict["predictions"]) for result_dict in results_by_id
         )
