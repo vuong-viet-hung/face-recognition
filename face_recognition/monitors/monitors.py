@@ -50,7 +50,7 @@ class ModelCheckpoint(Monitor):
         self,
         criterion: Criterion,
         checkpoint_dir: Union[str, Path],
-        phase: Phase = "valid",
+        phase: str = "valid",
     ) -> None:
         self._criterion = criterion
         self._phase = phase
@@ -74,7 +74,7 @@ class ReduceLROnPlateau(Monitor):
         optimizer,
         patience: int = 1,
         factor: float = 0.5,
-        phase: Phase = "valid",
+        phase: str = "valid",
     ) -> None:
         mode = "min" if isinstance(criterion, Loss) else "max"
         self._scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
