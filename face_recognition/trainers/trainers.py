@@ -172,5 +172,5 @@ class ArcFaceTrainer:
 
 
 def _import_tqdm() -> tuple:
-    from tqdm.auto import tqdm, trange
+    from tqdm import tqdm, trange
     return tqdm, trange
