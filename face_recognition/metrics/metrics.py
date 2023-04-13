@@ -86,6 +86,8 @@ class ResultsByID:
     def update(
         self, embedding_batch: torch.Tensor, label_batch: torch.Tensor
     ) -> None:
+        embedding_batch = embedding_batch.detach().cpu()
+        label_batch = label_batch.detach().cpu()
         _, n_identities = label_batch.shape
         class_indices = one_hot_decode(label_batch)
 
@@ -122,8 +124,8 @@ class ResultsByID:
     def result(self) -> List[Dict[str, torch.Tensor]]:
         return [
             {
-                "predictions": torch.tensor(result_dict["predictions"]).detach().cpu(),
-                "labels": torch.tensor(result_dict["labels"]).detach().cpu(),
+                "predictions": torch.tensor(result_dict["predictions"]),
+                "labels": torch.tensor(result_dict["labels"]),
             } for result_dict in self._results_by_id
         ]
 
