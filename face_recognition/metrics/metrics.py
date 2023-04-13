@@ -110,7 +110,7 @@ class MacroAveragePrecision(Metric):
         self.sample_count += self._n_current_valid_samples
 
     def result(self) -> float:
-        return self.total_precision / self.sample_count if self.sample_count != 0 else 0
+        return self.total_precision / self.sample_count if self.sample_count != 0 else 0.0
 
     def reset(self) -> None:
         self.total_precision = 0.0
@@ -156,7 +156,7 @@ class MacroAUR(Metric):
         self.sample_count += self._n_current_valid_samples
 
     def result(self) -> float:
-        return self.total_aur / self.sample_count if self.sample_count != 0 else 0
+        return self.total_aur / self.sample_count if self.sample_count != 0 else 0.0
 
     def reset(self) -> None:
         self.total_aur = 0.0
