@@ -3,4 +3,5 @@ from .metrics import (
     Accuracy,
     MacroAveragePrecision,
     MacroAUR,
+    group_results_by_id,
 )

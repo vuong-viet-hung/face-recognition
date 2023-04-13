@@ -171,7 +171,7 @@ class MacroAUR(Metric):
         self.sample_count += other.sample_count
 
 
-def _group_results_by_id(
+def group_results_by_id(
     output_batch: torch.Tensor, target_batch: torch.Tensor
 ) -> List[Dict[str, torch.Tensor]]:
 
