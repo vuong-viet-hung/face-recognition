@@ -12,19 +12,18 @@ from face_recognition.metrics import Metric
 
 
 Criterion = Union[Loss, Metric]
-Phase = Literal["train", "valid"]
 Comparator = Callable[[float, float], bool]
 
 
 class Monitor(ABC):
     @abstractmethod
-    def update(self, phase: Phase, model) -> None:
+    def update(self, phase: str, model) -> None:
         pass
 
 
 class EarlyStopping(Monitor):
     def __init__(
-        self, criterion: Criterion, patience: int, phase: Phase = "valid"
+        self, criterion: Criterion, patience: int, phase: str = "valid"
     ) -> None:
         self._criterion = criterion
         self._patience = patience
@@ -33,7 +32,7 @@ class EarlyStopping(Monitor):
         self._best_result = float("inf" if isinstance(criterion, Loss) else "-inf")
         self._epoch_without_improve = 0
 
-    def update(self, phase: Phase, model) -> None:
+    def update(self, phase: str, model) -> None:
         if phase != self._phase:
             return
         current_result = self._criterion.result()
@@ -59,7 +58,7 @@ class ModelCheckpoint(Monitor):
         self._best_result = float("inf" if isinstance(criterion, Loss) else "-inf")
         self._checkpoint_dir = Path(checkpoint_dir)
 
-    def update(self, phase: Phase, model) -> None:
+    def update(self, phase: str, model) -> None:
         if phase != self._phase:
             return
         current_result = self._criterion.result()
@@ -102,7 +101,7 @@ class TensorBoard(Monitor):
         self._result_dict: dict[str, dict[Phase, float]] = defaultdict(dict)
         self._epoch = 0
 
-    def update(self, phase: Phase, model) -> None:
+    def update(self, phase: str, model) -> None:
         for name, criterion in self._criteria.items():
             self._result_dict[name][phase] = criterion.result()
         if phase == "train":
