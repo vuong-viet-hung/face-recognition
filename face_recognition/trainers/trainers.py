@@ -87,7 +87,7 @@ class ArcFaceTrainer:
         self._update_metrics(embedding_batch, target_batch)
 
     def _valid_one_epoch(
-            self, valid_loader: torch.utils.data.DataLoader
+        self, valid_loader: torch.utils.data.DataLoader
     ) -> None:
         progress_bar = self._tqdm(valid_loader)
         self._valid_mode()
