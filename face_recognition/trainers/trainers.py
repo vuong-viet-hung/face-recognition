@@ -61,11 +61,10 @@ class ArcFaceTrainer:
         self._train_mode()
         for input_batch, target_batch in progress_bar:
             self._train_one_step(input_batch, target_batch)
-            progress_bar.set_description(f"Train: loss = {self._loss.result():.4f}")
+            progress_bar.set_description(
+                f"Train: loss = {self._loss.result()}, {self._format_metric_results()}"
+            )
 
-        progress_bar.set_description(
-            f"Train: loss = {self._loss.result()}, {self._format_metric_results()}"
-        )
         self._notify_monitors("train")
         self._reset()
 
@@ -95,8 +94,8 @@ class ArcFaceTrainer:
         with torch.no_grad():
             for input_batch, target_batch in progress_bar:
                 self._valid_one_step(input_batch, target_batch)
+                progress_bar.set_description(f"Valid: {self._format_metric_results()}")
 
-        progress_bar.set_description(f"Valid: {self._format_metric_results()}")
         self._notify_monitors("valid")
         self._reset()
 
@@ -116,8 +115,8 @@ class ArcFaceTrainer:
         with torch.no_grad():
             for input_batch, target_batch in progress_bar:
                 self._valid_one_step(input_batch, target_batch)
+                progress_bar.set_description(f"Test: {self._format_metric_results()}")
 
-        progress_bar.set_description(f"Test: {self._format_metric_results()}")
         self._reset()
 
     def save(self, save_dir: Union[str, Path]) -> None:
