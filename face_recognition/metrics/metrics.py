@@ -75,146 +75,132 @@ class Accuracy(Metric):
         self.correct_prediction_count += other.correct_prediction_count
 
 
-class ResultsByID:
+class MacroAveragePrecision(Metric):
 
     def __init__(self) -> None:
-        self._n_identities = 0
-        self.n_updates = 0
-        self._embeddings_by_id = []
-        self._results_by_id = []
+        self.total_precision = 0.0
+        self.sample_count = 0
+        super().__init__("average_precision")
+
+    def __call__(
+        self, output_batch: torch.Tensor, target_batch: torch.Tensor
+    ) -> float:
+        results_by_id = _group_results_by_id(output_batch, target_batch)
+        return torch.tensor(
+            [
+                average_precision_score(
+                    result_dict["labels"], result_dict["predictions"]
+                ) for result_dict in results_by_id
+            ]
+        ).mean().item()
 
     def update(
-        self, embedding_batch: torch.Tensor, label_batch: torch.Tensor
+        self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> None:
-        embedding_batch = embedding_batch.detach().cpu()
-        label_batch = label_batch.detach().cpu()
-        _, n_identities = label_batch.shape
-        class_indices = one_hot_decode(label_batch)
+        batch_size, _ = output_batch.shape
+        batch_aur = self(output_batch, target_batch)
+        self.total_precision += batch_aur * batch_size
+        self.sample_count += batch_size
 
-        if self._n_identities == 0:
-            self._change_phase(n_identities)
-
-        for idx, embedding in zip(class_indices, embedding_batch):
-            self._embeddings_by_id[idx].append(embedding)
-
-        for key_idx, key_id_embeddings in enumerate(self._embeddings_by_id):
-            query_id_embeddings = sum(
-                [
-                    embeddings for query_idx, embeddings
-                    in enumerate(self._embeddings_by_id) if query_idx != key_idx
-                ],
-                start=[],
-            )
-            key_id_query_embeddings = copy.copy(key_id_embeddings)
-
-            while len(key_id_query_embeddings) > 0:
-                key_embedding = key_id_query_embeddings.pop(0)
-                query_embeddings = key_id_query_embeddings + query_id_embeddings
-                self._results_by_id[key_idx]["predictions"].extend(
-                    _cosine_similarity(key_embedding, query_embeddings)
-                )
-                labels = (
-                    [torch.tensor(1) for _ in key_id_query_embeddings]
-                    + [torch.tensor(0) for _ in query_id_embeddings]
-                )
-                self._results_by_id[key_idx]["labels"].extend(labels)
-
-        self.n_updates += 1
-
-    def result(self) -> List[Dict[str, torch.Tensor]]:
-        return [
-            {
-                "predictions": torch.tensor(result_dict["predictions"]),
-                "labels": torch.tensor(result_dict["labels"]),
-            } for result_dict in self._results_by_id
-        ]
+    def result(self) -> float:
+        return self.total_precision / self.sample_count
 
     def reset(self) -> None:
-        self._embeddings_by_id = []
-        self._results_by_id = []
-        self._n_identities = 0
+        self.total_precision = 0.0
+        self.sample_count = 0
 
-    def _change_phase(self, n_identities: int) -> None:
-        self._n_identities = n_identities
-        self._embeddings_by_id = [[] for _ in range(n_identities)]
-        self._results_by_id = [
-            {"predictions": [], "labels": []} for _ in range(n_identities)
-        ]
+    def merge(self, other) -> None:
+        self.total_precision += other.total_precision
+        self.sample_count += other.sample_count
+
+
+class MacroAUR(Metric):
+
+    def __init__(self) -> None:
+        self.total_aur = 0.0
+        self.sample_count = 0
+        super().__init__("aur")
+
+    def __call__(
+        self, output_batch: torch.Tensor, target_batch: torch.Tensor
+    ) -> float:
+        results_by_id = _group_results_by_id(output_batch, target_batch)
+        return torch.tensor(
+            [
+                roc_auc_score(
+                    result_dict["labels"], result_dict["predictions"]
+                ) for result_dict in results_by_id
+            ]
+        ).mean().item()
+
+    def update(
+        self, output_batch: torch.Tensor, target_batch: torch.Tensor
+    ) -> None:
+        batch_size, _ = output_batch.shape
+        batch_aur = self(output_batch, target_batch)
+        self.total_aur += batch_aur * batch_size
+        self.sample_count += batch_size
+
+    def result(self) -> float:
+        return self.total_aur / self.sample_count
+
+    def reset(self) -> None:
+        self.total_aur = 0.0
+        self.sample_count = 0
+
+    def merge(self, other) -> None:
+        self.total_aur += other.total_precision
+        self.sample_count += other.sample_count
+
+
+def _group_results_by_id(
+    output_batch: torch.Tensor, target_batch: torch.Tensor
+) -> List[Dict[str, torch.Tensor]]:
+
+    class_indices = one_hot_decode(target_batch)
+    _, n_identities = target_batch.shape
+
+    embeddings_by_id = [[] for _ in range(n_identities)]
+    results_by_id = [
+        {"predictions": [], "labels": []} for _ in range(n_identities)
+    ]
+
+    for idx, embedding in zip(class_indices, output_batch):
+        embeddings_by_id[idx].append(embedding)
+
+    for key_idx, key_id_embeddings in enumerate(embeddings_by_id):
+        query_id_embeddings = sum(
+            [
+                embeddings for query_idx, embeddings
+                in enumerate(embeddings_by_id) if query_idx != key_idx
+            ],
+            start=[],
+        )
+        key_id_query_embeddings = copy.copy(key_id_embeddings)
+
+        while len(key_id_query_embeddings) > 0:
+            key_embedding = key_id_query_embeddings.pop(0)
+            query_embeddings = key_id_query_embeddings + query_id_embeddings
+            results_by_id[key_idx]["predictions"].extend(
+                1 - _cosine_similarity(
+                    key_embedding, query_embeddings
+                ).acos() / torch.pi
+            )
+            labels = (
+                    [torch.tensor(1) for _ in key_id_query_embeddings]
+                    + [torch.tensor(0) for _ in query_id_embeddings]
+            )
+            results_by_id[key_idx]["labels"].extend(labels)
+
+    return [
+        {
+            "predictions": torch.tensor(result_dict["predictions"]).detach().cpu(),
+            "labels": torch.tensor(result_dict["labels"]).detach().cpu(),
+        } for result_dict in results_by_id if len(result_dict["predictions"]) > 0
+    ]
 
 
 def _cosine_similarity(
     key_embedding: torch.Tensor, query_embeddings: List[torch.Tensor]
 ) -> torch.Tensor:
     return (key_embedding * torch.vstack(query_embeddings)).sum(axis=1)
-
-
-class AveragePrecision(Metric):
-
-    def __init__(self, result_by_id: ResultsByID) -> None:
-        self._results_by_id = result_by_id
-        self._n_updates = 0
-        super().__init__("average_precision")
-
-    def __call__(
-        self, output_batch: torch.Tensor, target_batch: torch.Tensor
-    ) -> float:
-        pass
-
-    def update(
-        self, output_batch: torch.Tensor, target_batch: torch.Tensor
-    ) -> None:
-        if self._n_updates == self._results_by_id.n_updates:
-            self._results_by_id.update(output_batch, target_batch)
-        self._n_updates += 1
-
-    def result(self) -> float:
-        precisions = torch.tensor(
-            [
-                average_precision_score(
-                    result_dict["labels"], result_dict["predictions"]
-                ) for result_dict in self._results_by_id.result()
-            ]
-        )
-        return precisions.mean().item()
-
-    def reset(self) -> None:
-        self._results_by_id.reset()
-
-    def merge(self, other) -> None:
-        pass
-
-
-class AUR(Metric):
-
-    def __init__(self, result_by_id: ResultsByID) -> None:
-        self._results_by_id = result_by_id
-        self._n_updates = 0
-        super().__init__("aur")
-
-    def __call__(
-            self, output_batch: torch.Tensor, target_batch: torch.Tensor
-    ) -> float:
-        pass
-
-    def update(
-            self, output_batch: torch.Tensor, target_batch: torch.Tensor
-    ) -> None:
-        if self._n_updates == self._results_by_id.n_updates:
-            self._results_by_id.update(output_batch, target_batch)
-        self._n_updates += 1
-
-    def result(self) -> float:
-        aur = torch.tensor(
-            [
-                roc_auc_score(
-                    result_dict["labels"], result_dict["predictions"]
-                ) for result_dict in self._results_by_id.result()
-            ]
-        )
-        return aur.mean().item()
-
-    def reset(self) -> None:
-        self._results_by_id.reset()
-
-    def merge(self, other) -> None:
-        pass
