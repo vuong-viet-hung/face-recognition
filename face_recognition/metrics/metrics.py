@@ -204,15 +204,6 @@ def _group_results_by_id(
             )
             results_by_id[key_idx]["labels"].extend(labels)
 
-    print(
-        [
-            {
-                "predictions": torch.tensor(result_dict["predictions"]).detach().cpu(),
-                "labels": torch.tensor(result_dict["labels"]).detach().cpu(),
-            } for result_dict in results_by_id if len(result_dict["predictions"]) > 0
-        ]
-    )
-
     return [
         {
             "predictions": torch.tensor(result_dict["predictions"]).detach().cpu(),
