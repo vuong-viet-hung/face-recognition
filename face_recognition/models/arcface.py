@@ -26,7 +26,7 @@ class ArcFace(torch.nn.Module):
         embedding_batch: torch.Tensor,
         target_batch: torch.Tensor,
     ) -> torch.Tensor:
-        normalized_w = torch.nn.functional.normalize(self._w)
+        normalized_w = torch.nn.functional.normalize(self._w, dim=0)
         cosine_similarities_per_sub_classes = _cosine_similarity(
             embedding_batch, normalized_w
         )
@@ -39,4 +39,4 @@ class ArcFace(torch.nn.Module):
 
 
 def _cosine_similarity(embedding_batch: torch.Tensor, w: torch.Tensor) -> torch.Tensor:
-    return (embedding_batch[:, :, None, None] * w).sum(dim=1)
+    return torch.tensordot(embedding_batch[:, :, None, None], w, dims=1)
