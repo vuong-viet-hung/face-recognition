@@ -21,6 +21,7 @@ class Loss(ABC):
         batch_loss = self(output_batch, target_batch).item()
         self.sample_count += batch_size
         self.total_loss += batch_loss * batch_size
+        print(self.total_loss)
 
     def result(self) -> float:
         return self.total_loss / self.sample_count
@@ -42,13 +43,6 @@ class CrossEntropy(Loss):
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> torch.Tensor:
-        # print(output_batch[0], target_batch[0])
-        # print(
-        #     self._loss_fn(
-        #         output_batch,
-        #         one_hot_decode(target_batch),
-        #     )
-        # )
         return self._loss_fn(
             output_batch,
             one_hot_decode(target_batch),
