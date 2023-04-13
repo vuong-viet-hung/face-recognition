@@ -86,6 +86,10 @@ class MacroAveragePrecision(Metric):
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
         results_by_id = _group_results_by_id(output_batch, target_batch)
+
+        if len(results_by_id) == 0:
+            return 0.0
+
         return torch.tensor(
             [
                 average_precision_score(
@@ -125,6 +129,10 @@ class MacroAUR(Metric):
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
         results_by_id = _group_results_by_id(output_batch, target_batch)
+
+        if len(results_by_id) == 0:
+            return 0.0
+
         return torch.tensor(
             [
                 roc_auc_score(
@@ -178,6 +186,9 @@ def _group_results_by_id(
         )
         key_id_query_embeddings = copy.copy(key_id_embeddings)
 
+        if len(key_id_query_embeddings) == 0 or len(query_id_embeddings) == 0:
+            continue
+
         while len(key_id_query_embeddings) > 0:
             key_embedding = key_id_query_embeddings.pop(0)
             query_embeddings = key_id_query_embeddings + query_id_embeddings
@@ -187,8 +198,8 @@ def _group_results_by_id(
                 ).acos() / torch.pi
             )
             labels = (
-                    [torch.tensor(1) for _ in key_id_query_embeddings]
-                    + [torch.tensor(0) for _ in query_id_embeddings]
+                [torch.tensor(1) for _ in key_id_query_embeddings]
+                + [torch.tensor(0) for _ in query_id_embeddings]
             )
             results_by_id[key_idx]["labels"].extend(labels)
 
