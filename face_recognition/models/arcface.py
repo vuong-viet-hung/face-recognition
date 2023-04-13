@@ -33,6 +33,9 @@ class ArcFace(torch.nn.Module):
         cosine_similarities = cosine_similarities_per_sub_classes.max(dim=2).values
         theta = cosine_similarities.acos()
         margins = target_batch * self._margin
+        print(self._softmax(
+            (theta + margins).cos() * self._scale_factor
+        )[0])
         return self._softmax(
             (theta + margins).cos() * self._scale_factor
         )
