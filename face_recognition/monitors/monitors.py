@@ -83,7 +83,7 @@ class ReduceLROnPlateau(Monitor):
         self._criterion = criterion
         self._phase = phase
 
-    def update(self, phase: Phase, model) -> None:
+    def update(self, phase: str, model) -> None:
         if phase == self._phase:
             self._scheduler.step(self._criterion.result())
 
@@ -98,7 +98,7 @@ class TensorBoard(Monitor):
             _make_criterion_dict(criteria) if isinstance(criteria, list) else criteria
         )
         self._writer = writer
-        self._result_dict: dict[str, dict[Phase, float]] = defaultdict(dict)
+        self._result_dict: dict[str, dict[str, float]] = defaultdict(dict)
         self._epoch = 0
 
     def update(self, phase: str, model) -> None:
