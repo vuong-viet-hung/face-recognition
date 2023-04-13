@@ -42,13 +42,13 @@ class CrossEntropy(Loss):
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> torch.Tensor:
-        print(output_batch[0], target_batch[0])
-        print(
-            self._loss_fn(
-                output_batch,
-                one_hot_decode(target_batch),
-            )
-        )
+        # print(output_batch[0], target_batch[0])
+        # print(
+        #     self._loss_fn(
+        #         output_batch,
+        #         one_hot_decode(target_batch),
+        #     )
+        # )
         return self._loss_fn(
             output_batch,
             one_hot_decode(target_batch),
