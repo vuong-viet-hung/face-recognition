@@ -21,7 +21,6 @@ class Loss(ABC):
         batch_loss = self(output_batch, target_batch).item()
         self.sample_count += batch_size
         self.total_loss += batch_loss * batch_size
-        print(self.total_loss)
 
     def result(self) -> float:
         return self.total_loss / self.sample_count
