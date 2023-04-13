@@ -9,6 +9,9 @@ from face_recognition.metrics import Metric
 from face_recognition.monitors import Monitor
 
 
+Phase = Literal["train", "valid"]
+
+
 class ArcFaceTrainer:
 
     def __init__(
@@ -158,7 +161,7 @@ class ArcFaceTrainer:
         )
         return results_format
 
-    def _notify_monitors(self, phase: str):
+    def _notify_monitors(self, phase: Phase):
         for monitor in self._monitors:
             monitor.update(phase, self)
 
