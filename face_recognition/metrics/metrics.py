@@ -184,12 +184,13 @@ def _group_results_by_id(
             ],
             start=[],
         )
-        key_id_query_embeddings = copy.copy(key_id_embeddings)
 
-        if len(key_id_query_embeddings) == 0 or len(query_id_embeddings) == 0:
+        if len(query_id_embeddings) == 0:
             continue
 
-        while len(key_id_query_embeddings) > 0:
+        key_id_query_embeddings = copy.copy(key_id_embeddings)
+
+        while len(key_id_query_embeddings) > 1:
             key_embedding = key_id_query_embeddings.pop(0)
             query_embeddings = key_id_query_embeddings + query_id_embeddings
             results_by_id[key_idx]["predictions"].extend(
@@ -202,6 +203,15 @@ def _group_results_by_id(
                 + [torch.tensor(0) for _ in query_id_embeddings]
             )
             results_by_id[key_idx]["labels"].extend(labels)
+
+    print(
+        [
+            {
+                "predictions": torch.tensor(result_dict["predictions"]).detach().cpu(),
+                "labels": torch.tensor(result_dict["labels"]).detach().cpu(),
+            } for result_dict in results_by_id if len(result_dict["predictions"]) > 0
+        ]
+    )
 
     return [
         {
