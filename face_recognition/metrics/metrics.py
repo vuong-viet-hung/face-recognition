@@ -141,17 +141,17 @@ class AUR(Metric):
 
 
 def compare_embeddings(
-    embedding_batch: torch.Tensor, label_batch: torch.Tensor
+    embeddings: torch.Tensor, targets: torch.Tensor
 ) -> Tuple[torch.Tensor, torch.Tensor]:
 
     predictions = []
     labels = []
 
-    for idx, (embedding, label) in enumerate(zip(embedding_batch, label_batch)):
-        if idx + 1 == len(embedding_batch):
+    for idx, (embedding, target) in enumerate(zip(embeddings, targets)):
+        if idx + 1 == len(embeddings):
             break
-        cosine_similarity = _cosine_similarity(embedding, embedding_batch[idx + 1:])
-        labels.extend(_cosine_similarity(label, label_batch[idx + 1:]))
+        cosine_similarity = _cosine_similarity(embedding, embeddings[idx + 1:])
+        labels.extend(_cosine_similarity(target, targets[idx + 1:]))
         predictions.extend(_cos_to_prediction(cosine_similarity))
 
     predictions = torch.vstack(predictions).detach().cpu()
