@@ -29,7 +29,7 @@ class Loss(ABC):
 
     def merge(self, other) -> None:
         self.total_loss += other.total_loss
-        self.sample_count += other.sample_count
+        self.sample_count += other.prediction_count
 
 
 class CrossEntropy(Loss):

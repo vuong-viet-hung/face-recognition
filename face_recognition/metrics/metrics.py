@@ -1,6 +1,5 @@
-import copy
 from abc import ABC, abstractmethod
-from typing import Dict, List
+from typing import Tuple
 
 import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
@@ -75,154 +74,97 @@ class Accuracy(Metric):
         self.correct_prediction_count += other.correct_prediction_count
 
 
-class MacroAveragePrecision(Metric):
+class AveragePrecision(Metric):
 
     def __init__(self) -> None:
-        self.total_precision = 0.0
-        self.sample_count = 0
-        self._n_current_valid_samples = 0
-        super().__init__("average_precision")
+        self.total_ap = 0.0
+        self.prediction_count = 0
+        super().__init__("ap")
 
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
-        results_by_id = group_results_by_id(output_batch, target_batch)
-        self._n_current_valid_samples = sum(
-            len(result_dict["predictions"]) for result_dict in results_by_id
-        )
-
-        if self._n_current_valid_samples == 0:
-            return 0.0
-
-        return torch.tensor(
-            [
-                average_precision_score(
-                    result_dict["labels"], result_dict["predictions"]
-                ) for result_dict in results_by_id
-            ]
-        ).mean().item()
+        labels, predictions = compare_embeddings(output_batch, target_batch)
+        return average_precision_score(labels, predictions)
 
     def update(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> None:
         batch_aur = self(output_batch, target_batch)
-        self.total_precision += batch_aur * self._n_current_valid_samples
-        self.sample_count += self._n_current_valid_samples
+        n_predictions, _ = batch_aur
+        self.total_ap += batch_aur * n_predictions
+        self.prediction_count += n_predictions
 
     def result(self) -> float:
-        return (
-            self.total_precision / self.sample_count if self.sample_count != 0 else 0.0
-        )
+        return self.total_ap / self.prediction_count
 
     def reset(self) -> None:
-        self.total_precision = 0.0
-        self.sample_count = 0
+        self.total_ap = 0.0
+        self.prediction_count = 0
 
     def merge(self, other) -> None:
-        self.total_precision += other.total_precision
-        self.sample_count += other.sample_count
+        self.total_ap += other.total_ap
+        self.prediction_count += other.prediction_count
 
 
-class MacroAUR(Metric):
+class AUR(Metric):
 
     def __init__(self) -> None:
         self.total_aur = 0.0
-        self.sample_count = 0
-        self._n_current_valid_samples = 0
+        self.prediction_count = 0
         super().__init__("aur")
 
     def __call__(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> float:
-        results_by_id = group_results_by_id(output_batch, target_batch)
-        self._n_current_valid_samples = sum(
-            len(result_dict["predictions"]) for result_dict in results_by_id
-        )
-
-        if self._n_current_valid_samples == 0:
-            return 0.0
-
-        return torch.tensor(
-            [
-                roc_auc_score(
-                    result_dict["labels"], result_dict["predictions"]
-                ) for result_dict in results_by_id
-            ]
-        ).mean().item()
+        labels, predictions = compare_embeddings(output_batch, target_batch)
+        return roc_auc_score(labels, predictions)
 
     def update(
         self, output_batch: torch.Tensor, target_batch: torch.Tensor
     ) -> None:
         batch_aur = self(output_batch, target_batch)
-        self.total_aur += batch_aur * self._n_current_valid_samples
-        self.sample_count += self._n_current_valid_samples
+        n_predictions, _ = batch_aur
+        self.total_aur += batch_aur * n_predictions
+        self.prediction_count += n_predictions
 
     def result(self) -> float:
-        return (
-            self.total_aur / self.sample_count if self.sample_count != 0 else 0.0
-        )
+        return self.total_aur / self.prediction_count
 
     def reset(self) -> None:
         self.total_aur = 0.0
-        self.sample_count = 0
+        self.prediction_count = 0
 
     def merge(self, other) -> None:
-        self.total_aur += other.total_precision
-        self.sample_count += other.sample_count
+        self.total_aur += other.total_ap
+        self.prediction_count += other.prediction_count
 
 
-def group_results_by_id(
-    output_batch: torch.Tensor, target_batch: torch.Tensor
-) -> List[Dict[str, torch.Tensor]]:
+def compare_embeddings(
+    embedding_batch: torch.Tensor, label_batch: torch.Tensor
+) -> Tuple[torch.Tensor, torch.Tensor]:
 
-    class_indices = one_hot_decode(target_batch)
-    _, n_identities = target_batch.shape
+    predictions = []
+    labels = []
 
-    embeddings_by_id = [[] for _ in range(n_identities)]
-    results_by_id = [
-        {"predictions": [], "labels": []} for _ in range(n_identities)
-    ]
+    for idx, (embedding, label) in enumerate(zip(embedding_batch, label_batch)):
+        if idx + 1 == len(embedding_batch):
+            break
+        cosine_similarity = _cosine_similarity(embedding, embedding_batch[idx + 1:])
+        labels.extend(_cosine_similarity(label, label_batch[idx + 1:]))
+        predictions.extend(_cos_to_prediction(cosine_similarity))
 
-    for idx, embedding in zip(class_indices, output_batch):
-        embeddings_by_id[idx].append(embedding)
+    predictions = torch.vstack(predictions).detach().cpu()
+    labels = torch.vstack(labels).detach().cpu()
 
-    for key_idx, key_id_embeddings in enumerate(embeddings_by_id):
-        query_id_embeddings = sum(
-            [
-                embeddings for query_idx, embeddings
-                in enumerate(embeddings_by_id) if query_idx != key_idx
-            ],
-            start=[],
-        )
-
-        if len(query_id_embeddings) == 0:
-            continue
-
-        key_id_query_embeddings = copy.copy(key_id_embeddings)
-
-        while len(key_id_query_embeddings) > 1:
-            key_embedding = key_id_query_embeddings.pop(0)
-            query_embeddings = key_id_query_embeddings + query_id_embeddings
-            results_by_id[key_idx]["predictions"].extend(
-                1 - _cosine_similarity(
-                    key_embedding, query_embeddings
-                ).acos() / torch.pi
-            )
-            labels = (
-                [torch.tensor(1) for _ in key_id_query_embeddings]
-                + [torch.tensor(0) for _ in query_id_embeddings]
-            )
-            results_by_id[key_idx]["labels"].extend(labels)
-
-    return [
-        {
-            "predictions": torch.tensor(result_dict["predictions"]).detach().cpu(),
-            "labels": torch.tensor(result_dict["labels"]).detach().cpu(),
-        } for result_dict in results_by_id if len(result_dict["predictions"]) > 0
-    ]
+    return labels, predictions
 
 
 def _cosine_similarity(
-    key_embedding: torch.Tensor, query_embeddings: List[torch.Tensor]
+    key_embedding: torch.Tensor, query_embeddings: torch.Tensor
 ) -> torch.Tensor:
-    return (key_embedding * torch.vstack(query_embeddings)).sum(axis=1).clamp(-1, 1)
+    return (key_embedding * query_embeddings).sum(axis=1).clamp(-1, 1)
+
+
+def _cos_to_prediction(cosine_similarity: torch.Tensor) -> torch.Tensor:
+    return 1 - cosine_similarity.acos() / torch.pi
