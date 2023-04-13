@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 
 import torch
 
-from face_recognition.operators import one_hot_decode
-
 
 class Loss(ABC):
     def __init__(self) -> None:
