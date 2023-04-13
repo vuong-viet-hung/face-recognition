@@ -1,0 +1,19 @@
+name: pytorch
+channels:
+  - conda-forge
+  - pytorch
+  - nvidia
+dependencies:
+  - conda-forge::ipywidgets=8.0.6
+  - conda-forge::jupyterlab=3.6.3
+  - conda-forge::matplotlib=3.7.1
+  - conda-forge::mypy=1.2.0
+  - conda-forge::numpy=1.22.4
+  - conda-forge::pylint=2.17.2
+  - conda-forge::pytest=7.3.0
+  - conda-forge::python==3.9.16
+  - conda-forge::scikit-learn==1.2.2
+  - conda-forge::tqdm==4.65.0
+  - pytorch::pytorch=1.13.1
+  - pytorch::torchvision=0.14.1
+  - pytorch::pytorch-cuda=11.8
